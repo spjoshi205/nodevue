@@ -3,6 +3,7 @@
 		<div class="myForm">
 			<h2>Login</h2>
 			<div v-show="errMsg" class="alert alert-danger" role="alert">{{errMsg}}</div>
+			<div v-for="err in errMsgArr" v-bind:key="err.param" class="alert alert-danger" role="alert">{{err.msg}}</div>
 			<form @submit.prevent="handleSubmit">
 				<div class="form-group">
 					<label for="username">Username</label>
@@ -15,7 +16,8 @@
 					<div v-show="submitted && !password" class="invalid-feedback">Password is required</div>
 				</div>
 				<div class="form-group">
-					<button class="btn btn-primary">Login</button>
+					<button class="btn btn-primary">Login</button>&nbsp;
+					<a class="btn btn-primary" href="/register">Register</a>
 				</div>
 			</form>
 		</div>
@@ -33,6 +35,7 @@ export default {
             password: '',
             submitted: false,
             errMsg : '',
+            errMsgArr : [],
             emailvalidation : null,
             emailMessage : 'Username is required'
         }
@@ -50,7 +53,14 @@ export default {
 						localStorage.setItem('usersec', response.data.token);
 						this.$router.push('/')
 					} else {
-						this.errMsg = response.data.message;
+						this.errMsgArr = [];
+						this.errMsg = '';
+						if(response.data.messageArr){
+							this.errMsgArr = response.data.messageArr;
+						}
+						if(response.data.message){
+							this.errMsg = response.data.message;
+						}
 					}
 				})
 				.catch(err => console.log(err));

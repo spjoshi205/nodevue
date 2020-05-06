@@ -1,155 +1,94 @@
 <template>
   <div class="row app-mainDiv">
-	<div class="col-md-12 titleBox"><h1>Notes</h1><a href="javascript:;" class="pull-right" @click="logout">Logout</a></div>
-	<div class="col-md-12 contentbox">
-		<div class="row">
-			<div class="col-md-4 col-sm-12 leftContentDiv">
-			<ul id="notelistingul">
-			<li v-if="allnotes.length == 0">No Records found</li>
-
-			<li v-for="note in allnotes" class="noteList" :key="note._id">
-				<div class="editNoteDiv" @click="editNote(note._id)">
-					<div>
-						<strong>{{ note.title }}</strong>
-						<div class="clear"></div>
-					</div>
-					<p>{{ note.description }}</p>
+		<menu-content title="Dashborard" currentpage=""></menu-content>
+		<div class="col-md-12 contentbox">
+		<div class="myForm">
+			<h2>Setup github</h2>
+			<div v-show="errMsg" class="alert alert-danger" role="alert">{{errMsg}}</div>
+			<div v-show="sucMsg" class="alert alert-success" role="alert">{{sucMsg}}</div>
+			<form @submit.prevent="handleSubmit">
+				<div class="form-group">
+					<label for="name">Api Key *</label>
+					<input type="hidden" v-model="id" id="id" name="id" />
+					<input type="text" v-model="apikey" id="apikey" name="apikey" class="form-control" :class="{ 'is-invalid': submitted && (!apikey) }" />
+					<div v-show="submitted && (!apikey)" class="invalid-feedback">Api Key is required</div>
 				</div>
-				<strong class="pull-right deleteNote" @click="deleteNote(note._id)">X</strong>
-			</li>
-			</ul>
-			</div>
-			<div class="col-md-8 col-sm-12 rightContentDiv">
-					<button class="btn pull-right" @click="addNew">+ Add Note</button>
-					<div class="clear"></div>
-					<div v-show="errMsg" class="alert alert-danger" role="alert">{{errMsg}}</div>
-					<div v-show="sucMsg" class="alert alert-success" role="alert">{{sucMsg}}</div>
-					<form @submit.prevent="handleSubmit">
-						<div class="form-group">
-							<label for="title">Title</label>
-							<input type="text" v-model="title" id="title" name="title" class="form-control" :class="{ 'is-invalid': submitted && !title }" />
-							<div v-show="submitted && !title" class="invalid-feedback">Title is required</div>
-							<input type="hidden" v-if="id" id="_id" name="_id" v-model="id" />
-						</div>
-						<div class="form-group">
-							<label for="password">Body</label>
-							<textarea v-model="description" name="description" id="description" class="form-control" :class="{ 'is-invalid': submitted && !description }"></textarea>
-							<div v-show="submitted && !description" class="invalid-feedback">Description is required</div>
-						</div>
-						<div class="form-group">
-							<button class="btn btn-primary pull-right">Save</button>
-							<div class="clear"></div>
-						</div>
-					</form>
+				<div class="form-group">
+					<button class="btn btn-primary">Save</button>
 				</div>
-			</div>
+			</form>
 		</div>
+			<div class="row">
+				<div class="col-md-12 col-sm-12">
+					<h1></h1>
+					<div class="row">
+						<div class="col-md-12 col-sm-12">
+							
+						</div>
+					</div>
+				</div>
+			</div>
+	</div>
   </div>
 </template>
 
 <script>
 import axios from 'axios';
 import CONST from '../const'
+import MenuContent from './menu'
 
 export default {
     data () {
         return {
-			allnotes:[],
-            title: '',
-            description: '',
-            id:'',
+			apikey: '',
+			id:'',
             errMsg : '',
             sucMsg : '',
             submitted : false
         }
     },
+	components :{
+		MenuContent
+	},
     created () {
 		const token = localStorage.getItem('usersec');
-		axios.post(CONST.apiURL+'notes', {token:token})
+		axios.post(CONST.apiURL+'getgitkey', {token:token})
 		.then(response => {
-			this.allnotes = response.data.notes;
+			if(response.data.success == true){
+				this.apikey = response.data.apikey;
+				this.id = response.data.id;
+			} else {
+				if(response.data.auth == false){
+					this.logout();
+				}
+			}
 		})
 		.catch(err => console.log(err));
     },
     methods: {
          handleSubmit () {
             this.submitted = true;
-            const { title, description } = this;
+			this.sucMsg = '';
+			this.errMsg = '';
+            const { apikey,id } = this;
 			const token = localStorage.getItem('usersec');
-            if (title && description) {
-				axios.post(CONST.apiURL+'addnote', {token:token,title:title,description:description,id : this.id})
+            if (apikey) {
+				axios.post(CONST.apiURL+'addgitkey', {token:token,apikey:apikey,id:id})
 				.then(response => {
 					if(response.data.success == true){
-						const allNotes = [...this.allnotes];
-						if(this.id != ''){
-							const fid = this.id;
-							const noteindex = allNotes.findIndex(note => note._id == fid);
-							allNotes[noteindex] = response.data.note;
-						} else {
-							allNotes.push(response.data.note);
-						}
-						this.allnotes = allNotes;
-						this.sucMsg = 'record save successfully';
-						this.resetForm();
+						this.sucMsg = response.data.message;
+						//this.resetForm();
 					} else {
 						if(response.data.auth == false){
 							this.logout();
 						} else {
-							this.errMsg = "Server error";
+							this.errMsg = response.data.message;
 						}
 					}
 				})
 				.catch(err => console.log(err));
             }
         },
-        addNew(){
-			this.resetForm();
-            this.errMsg = '';
-            this.sucMsg = '';
-        },
-        resetForm(){
-			this.title =  '';
-            this.description = '';
-            this.id = '';
-            this.submitted = false;
-        },
-        editNote(fid){
-			const allNotes = [...this.allnotes];
-			const dataval = allNotes.find(note => note._id == fid);
-			if(dataval){
-				this.title =  dataval.title;
-				this.description = dataval.description;
-				this.id = dataval._id;
-				
-			}
-        },
-        deleteNote(fid){
-			const token = localStorage.getItem('usersec');
-			axios.post(CONST.apiURL+'deletenote', {token:token,id:fid})
-			.then(response => {
-				if(response.data.success == true){
-					const allNotes = [...this.allnotes];
-					const noteindex = allNotes.findIndex(note => note._id == fid);
-					if (noteindex > -1) {
-					allNotes.splice(noteindex, 1);
-					}
-					this.allnotes = allNotes;
-					this.sucMsg = response.data.message;
-					this.resetForm();
-				} else {
-					if(response.data.auth == false){
-						this.logout();
-					} else {
-						this.errMsg = "Server error";
-					}
-				}
-			})
-			.catch(err => console.log(err));
-        },
-        logout(){
-			localStorage.clear();
-			this.$router.push('/login');
-		},
     }
 };
 </script>
@@ -199,5 +138,9 @@ cursor:pointer;
 	right:0;
 	top:0;
 	cursor:pointer;
+}
+.myForm {
+  max-width: 400px;
+  margin:auto;
 }
 </style>
